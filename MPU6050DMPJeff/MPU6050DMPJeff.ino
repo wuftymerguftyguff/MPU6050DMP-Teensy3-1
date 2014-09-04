@@ -357,7 +357,8 @@ void loop() {
             
             //Z is yaw
             int joyZ = map(ypr[0] * 180/M_PI,-90,90,0,1023);
-            Joystick.Z(joyZ); 
+            //Joystick.Z(joyZ);
+            Joystick.Zrotate(joyZ); 
         #endif
 
         #ifdef OUTPUT_READABLE_REALACCEL
