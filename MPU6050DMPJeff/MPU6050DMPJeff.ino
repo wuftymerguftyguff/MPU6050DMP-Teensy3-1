@@ -120,6 +120,10 @@ MPU6050 mpu;
 #define PinInt1 0
 #define LED_PIN 13 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
+//
+int sampleCount =0;
+int pitchTot = 0;
+double pitchAvg = 0;
 
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
@@ -171,7 +175,7 @@ void setup() {
     // (115200 chosen because it is required for Teapot Demo output, but it's
     // really up to you depending on your project)
     Serial.begin(38400);
-    while (!Serial); // wait for Leonardo enumeration, others continue immediately
+    //while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // NOTE: 8MHz or slower host processors, like the Teensy @ 3.3v or Ardunio
     // Pro Mini running at 3.3v, cannot handle this baud rate reliably due to
@@ -188,10 +192,11 @@ void setup() {
     Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
 
     // wait for ready
-    Serial.println(F("\nSend any character to begin DMP programming and demo: "));
-    while (Serial.available() && Serial.read()); // empty buffer
-    while (!Serial.available());                 // wait for data
-    while (Serial.available() && Serial.read()); // empty buffer again
+    delay(1000);
+    //Serial.println(F("\nSend any character to begin DMP programming and demo: "));
+    //while (Serial.available() && Serial.read()); // empty buffer
+    //while (!Serial.available());                 // wait for data
+    //while (Serial.available() && Serial.read()); // empty buffer again
 
     // load and configure the DMP
     Serial.println(F("Initializing DMP..."));
@@ -311,16 +316,33 @@ void loop() {
         #endif
 
         #ifdef OUTPUT_READABLE_YAWPITCHROLL
+            sampleCount++;
             // display Euler angles in degrees
             mpu.dmpGetQuaternion(&q, fifoBuffer);
             mpu.dmpGetGravity(&gravity, &q);
             mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+            
+            int pitch = ypr[1] * 180/M_PI;
+            pitchTot = pitchTot + pitch;
+            pitchAvg = pitchTot/(float)sampleCount;
+            
             Serial.print("ypr\t");
             Serial.print(ypr[0] * 180/M_PI);
             Serial.print("\t");
             Serial.print(ypr[1] * 180/M_PI);
             Serial.print("\t");
-            Serial.println(ypr[2] * 180/M_PI);
+            Serial.print(ypr[2] * 180/M_PI);
+            
+            Serial.print("\t");
+            Serial.print(sampleCount);
+            Serial.print("\t");
+            Serial.print(pitchTot);
+            Serial.print("\t");
+            Serial.print(pitchAvg);
+            //printDouble(pitchAvg,4);
+            Serial.println(" ");
+            
+            
             
             //X is roll
             int joyX = map(ypr[2] * 180/M_PI,-90,90,0,1023);
@@ -383,4 +405,31 @@ void loop() {
         blinkState = !blinkState;
         digitalWrite(LED_PIN, blinkState);
     }
+}
+
+void printDouble( double val, byte precision){
+  // prints val with number of decimal places determine by precision
+  // precision is a number from 0 to 6 indicating the desired decimial places
+  // example: printDouble( 3.1415, 2); // prints 3.14 (two decimal places)
+
+  Serial.print (int(val));  //prints the int part
+  if( precision > 0) {
+    Serial.print("."); // print the decimal point
+    unsigned long frac;
+    unsigned long mult = 1;
+    byte padding = precision -1;
+    while(precision--)
+       mult *=10;
+       
+    if(val >= 0)
+      frac = (val - int(val)) * mult;
+    else
+      frac = (int(val)- val ) * mult;
+    unsigned long frac1 = frac;
+    while( frac1 /= 10 )
+      padding--;
+    while(  padding--)
+      Serial.print("0");
+    Serial.print(frac,DEC) ;
+  }
 }
